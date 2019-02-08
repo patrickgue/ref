@@ -33,9 +33,6 @@ int main(void) {
     
   }
 
-
-    
-
   endwin();
   return 0;
 }
@@ -69,8 +66,6 @@ int menu(char** options_orig, int options_count, char *exit_title) {
       mvprintw(i+1,2,"%s\n", options[i]);
       if(selection == i)
 	attroff(A_REVERSE);
-
-
     }
 
     refresh();
@@ -101,6 +96,7 @@ void ref_text_view(char* text) {
     word_position_last = 0;
   char *sep = " ";
   char *word, *brkt, *text_a;
+  bool ref_mode = false;
   text_a = (char*) malloc(sizeof(char) * (strlen(text) + 1)); 
   strcpy(text_a, text);
   while(true) {
@@ -160,7 +156,7 @@ void ref_text_view(char* text) {
       char* word_cpy = malloc(sizeof(char) + (strlen(word) + 1));
       strcpy(word_cpy, word);
       
-      if(word_position_select == word_position) {
+      if(word_position_select == word_position && ref_mode == true) {
 	/* find better solution for sprintf issue */
 	char* a = malloc(sizeof(char) + (strlen(word) + 3));
 	strcpy(a, "#");
@@ -192,13 +188,8 @@ void ref_text_view(char* text) {
     if(ch == 'q' || ch == 'e') {
       break;
     }
-    else if(ch == KEY_DOWN) {
-      position++;
-    }
-    else if(ch == KEY_UP) {
-      if(position > 0) {
-	position--;
-      }
+    else if(ch == 'r') {
+      ref_mode = !ref_mode;
     }
     else if(ch == 'v') {
       position += LINES;
@@ -209,10 +200,27 @@ void ref_text_view(char* text) {
 	position = 0;
       }
     }
-    else if(ch == 'o')
-      word_position_select++;
-    else if(ch == 'p')
-      word_position_select--;
+    if(ref_mode) {
+      if(ch == KEY_RIGHT) {
+	word_position_select++;
+      }
+      else if(ch == KEY_LEFT && word_position > 0) {
+	word_position_select--;
+      }
+      else if(ch == ' ') {
+	//ref_selection();
+      }
+    }
+    else {
+      if(ch == KEY_DOWN) {
+	position++;
+      }
+      else if(ch == KEY_UP) {
+	if(position > 0) {
+	  position--;
+	}
+      }
+    }
     
     strcpy(text_a, text);
     i++;
