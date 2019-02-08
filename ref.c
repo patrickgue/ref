@@ -22,7 +22,6 @@ int main(void) {
   raw();
   keypad(stdscr, TRUE);
   noecho();
-
   while(true) {
     int choice = menu(main_menu_text, main_menu_len, MENU_EXIT);
     if(choice == main_menu_len) {
@@ -33,6 +32,7 @@ int main(void) {
     }
     
   }
+
 
     
 
@@ -97,7 +97,8 @@ void ref_text_view(char* text) {
     i = 0,
     position =  0,
     word_position = 0,
-    word_position_select = 0;
+    word_position_select = 0,
+    word_position_last = 0;
   char *sep = " ";
   char *word, *brkt, *text_a;
   text_a = (char*) malloc(sizeof(char) * (strlen(text) + 1)); 
@@ -105,19 +106,27 @@ void ref_text_view(char* text) {
   while(true) {
     clear();
     int current_line = 0, line_len = 2;
+    word_position = 0;
     char* line = (char*) malloc((COLS+1) * sizeof(char));
     sprintf(line, "  ");
     for (word = strtok_r(text_a, sep, &brkt); word; word = strtok_r(NULL, sep, &brkt)) {
       
       if(line_len + strlen(word) > (COLS > MAX_WIDTH ? MAX_WIDTH : COLS) - 5 || contains_char(word, '\\')) {
+
+	if(
+	   (current_line < position  && word_position_select < word_position) ||
+	   word_position_select > word_position_last) {
+	    word_position_select = word_position;
+	}
 	if(current_line >= position) {
+	 
 	  mvprintw(current_line - position, 0, "%3i: ", current_line);
-	  int ch, chp = 0;
+	  int ch = -1, chp = 0;
 	  bool attr = false;
-	  
+
 	  while(ch != 0) {
 	    ch = line[chp];
-	    if(ch=='#') {
+	    if(ch == '#') {
 	      if(!attr) {
 		attron(A_REVERSE);
 	      }
@@ -125,13 +134,16 @@ void ref_text_view(char* text) {
 		attroff(A_REVERSE);
 	      }
 	      attr = attr != true;
-	    }
-	    else {
-	      addch(ch);
+	      }
+	    // TODO: find cleaner solution
+	    else if(ch != 0) {
+	      printw("%c",ch);
 	    }
 	    chp++;
 	  }
+
 	}
+
 	
 	if(contains_char(word, '\\')) {
 	  line_len = 2;
@@ -144,21 +156,32 @@ void ref_text_view(char* text) {
 	current_line += (contains_char(word, '\\')?1:1);
       }
 
+      /* copy of 'char* word' needed because of weird behaviour of strtok */
+      char* word_cpy = malloc(sizeof(char) + (strlen(word) + 1));
+      strcpy(word_cpy, word);
+      
       if(word_position_select == word_position) {
-	sprintf(word, "#%s#", word);
+	/* find better solution for sprintf issue */
+	char* a = malloc(sizeof(char) + (strlen(word) + 3));
+	strcpy(a, "#");
+	strcat(a, word_cpy);
+	strcpy(word_cpy, a);
+	strcat(word_cpy, "#");
+	//sprintf(word_cpy, "#%s#", word_cpy);
       }
       
-      sprintf(line, "%s%s ", line, replace_word(word, "\\", ""));
+      sprintf(line, "%s%s ", line, replace_word(word_cpy, "\\", ""));
       line_len += strlen(word) + 1;
       word_position++;
       if(current_line - position >= LINES - 1) {
 	break;
       }
     }
+    word_position_last = word_position;
     brkt =  NULL, word = NULL;
     attron(A_REVERSE);
     if(DEBUG) {
-      mvprintw(LINES-1,0,"[v] down [^] up [r] toggle reference mode [e/q] exit text view [?] help | %i / %i / %i", ACS_DARROW, ACS_UARROW, REF_TEXT_VIEW_HELP, position, i, current_line);
+      mvprintw(LINES-1,0,"[v] down [^] up [r] toggle reference mode [e/q] exit text view [?] help | %i / %i / %i / %i / %i", position, i, current_line, word_position, word_position_select);
     }
     else {
       mvprintw(LINES-1,0,"[v] down [^] up [r] toggle reference mode [e/q] exit text view [?] help");;
@@ -186,6 +209,10 @@ void ref_text_view(char* text) {
 	position = 0;
       }
     }
+    else if(ch == 'o')
+      word_position_select++;
+    else if(ch == 'p')
+      word_position_select--;
     
     strcpy(text_a, text);
     i++;
