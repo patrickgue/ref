@@ -5,17 +5,21 @@
 #include "util.h"
 #include "ref.h"
 #include "fileio.h"
+#include "log.h"
 
 #define DEBUG 1
+#define LOG true
 
 #define MAX_WIDTH 160
 
 char **main_menu_text;
 int main_menu_len;
 
-int main(void) {
+int main(int argc, char** argv) {
   int ch, nrtitles = 4;
 
+  init_file_log(NULL);
+  
   init();
   
   initscr();
@@ -28,7 +32,12 @@ int main(void) {
       break;
     }
     else if(choice == 0) {
-      ref_text_view(read_file("test/file"));
+      int text = choose_text();
+      ref_text_list list = load_text_list();
+      if(text != list.entries_count) {
+	info(list.entries[text].path);
+	ref_text_view(read_file(list.entries[text].path));
+      }
     }
     
   }
@@ -41,10 +50,14 @@ int main(void) {
 
 
 void init() {
-  main_menu_len = 2;
+  ref_text_list list = load_text_list();
+  
+  main_menu_len = 3;
   main_menu_text = (char**) malloc(sizeof(char) * main_menu_len * MENU_TITLE_LEN);
   main_menu_text[0] = "Text";
   main_menu_text[1] = "References";
+  main_menu_text[2] = "Help";
+  
 }
 
 
@@ -85,6 +98,20 @@ int menu(char** options_orig, int options_count, char *exit_title) {
   return selection;
 }
 
+int choose_text() {
+  info("Enter choose_text");
+  ref_text_list list = load_text_list();
+  int i;
+  char** text_list = malloc(64 * list.entries_count * sizeof(char));
+  info("Found following texts");
+  for(i = 0; i < list.entries_count; i++) {
+    text_list[i] = list.entries[i].title;
+    info(list.entries[i].title);
+  }
+  info("Exit coose_text");
+  
+  return menu(text_list, i, MENU_BACK);
+}
 
 void ref_text_view(char* text) {
   clear();
@@ -152,7 +179,6 @@ void ref_text_view(char* text) {
 	current_line += (contains_char(word, '\\')?1:1);
       }
 
-      /* copy of 'char* word' needed because of weird behaviour of strtok */
       char* word_cpy = malloc(sizeof(char) + (strlen(word) + 1));
       strcpy(word_cpy, word);
       
@@ -226,5 +252,88 @@ void ref_text_view(char* text) {
     i++;
   }
   
+
+}
+
+
+ref_refset load_refs() {
+  char path[128] = REF_DATA_LOCATION;
+  strcat(path, "ref");
+  char* raw_string = read_file(path);
+
+  char *word, *line, *brkt, *brkt2;
+  const char *sep = ":", *sep2 = "\n";
+
+
+  ref_refset set = {NULL, 0};
+  set.references = malloc(0);
+  
+  for(line = strtok_r(raw_string, sep2, &brkt2); line; line = strtok_r(NULL, sep2, &brkt2)) {
+    ref_reference *reference = malloc(sizeof(ref_text_entry));
+    
+    word = strtok_r(line, sep, &brkt);
+
+    reference->id = atoi(word);
+  
+    word = strtok_r(NULL, sep, &brkt);
+
+    reference->from_id = atoi(word);
+
+    word = strtok_r(NULL, sep, &brkt);
+
+    reference->from_word = atoi(word);
+
+    word = strtok_r(NULL, sep, &brkt);
+
+    reference->to_id = atoi(word);
+
+    word = strtok_r(NULL, sep, &brkt);
+
+    reference->to_word = atoi(word);
+
+    word = strtok_r(NULL, sep, &brkt);
+
+    strcpy(reference->comment, word);
+
+    set.references_count++;
+    set.references = realloc(set.references, set.references_count * sizeof(ref_reference));
+    set.references[set.references_count-1] = *reference;
+  }
+
+  return set;
+}
+
+ref_text_list load_text_list() {
+  char path[128] = REF_DATA_LOCATION;
+  strcat(path, "text");
+  char* raw_string = read_file(path);
+
+  char *word, *line, *brkt, *brkt2;
+  const char *sep = ":", *sep2 = "\n";
+
+  ref_text_list list = {NULL,0};
+  list.entries = malloc(0);
+
+  for(line = strtok_r(raw_string, sep2, &brkt2); line; line = strtok_r(NULL, sep2, &brkt2)) {
+    ref_text_entry *entry = malloc(sizeof(ref_text_entry));
+    
+    word = strtok_r(line, sep, &brkt);
+
+    entry->id = atoi(word);
+  
+    word = strtok_r(NULL, sep, &brkt);
+
+    strcpy(entry->title, word);
+
+    word = strtok_r(NULL, sep, &brkt);
+
+    strcpy(entry->path, word);
+
+    list.entries_count++;
+    list.entries = realloc(list.entries, list.entries_count * sizeof(ref_text_entry));
+    list.entries[list.entries_count-1] = *entry;
+  }
+
+  return list;
 
 }
