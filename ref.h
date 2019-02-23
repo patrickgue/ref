@@ -51,9 +51,7 @@ struct s_ref_refset {
 
 typedef struct s_ref_refset ref_refset;
   
-int menu(char* options[32], int nroptions, char* exit_title);
-int choose_text();
-void ref_text_view(char* text);
+
 void init();
 ref_refset load_refs();
 ref_text_list load_text_list();

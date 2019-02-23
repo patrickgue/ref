@@ -47,3 +47,12 @@ bool contains_char(const char* str, char search) {
   return false;
 }
 
+
+char* wrap_word(char *word, char *wrap) {
+  char* a = malloc(sizeof(char) * (strlen(word) + (strlen(wrap) * 2) + 1));
+  strcpy(a, wrap);
+  strcat(a, word);
+  strcpy(word, a);
+  strcat(word, wrap);
+  return word;
+}
